@@ -1,0 +1,89 @@
+# Defaults for a KITTI *raw* synced drive (image_00 / image_01 greyscale pair).
+# Every value here is the default baked into the dataclasses in src/svslam;
+# this file documents them in one place and is what to edit when tuning.
+
+dataset:
+  layout: raw
+  # Directory holding image_00/, image_01/ and oxts/.
+  sequence: data/kitti/2011_09_30/2011_09_30_drive_0027_sync
+  # Defaults to the parent of `sequence` when omitted.
+  calibration: data/kitti/2011_09_30
+  colour: false
+  # "mercator" reproduces the official KITTI development kit; "enu" uses a
+  # WGS-84 ellipsoidal conversion instead. On drive 0027 the two disagree by
+  # 0.054% of path length.
+  projection: mercator
+
+features:
+  max_features: 1500        # budget after bucketing
+  grid_rows: 5              # bucketing grid over the 1226x370 rectified image
+  grid_cols: 12
+  max_per_cell: 30
+  fast_threshold: 12
+  scale_factor: 1.2
+  n_levels: 8
+  use_bucketing: true
+  ratio_test: 0.75          # Lowe ratio for descriptor matching
+  max_hamming: 64
+
+stereo:
+  patch_radius: 5           # 11x11 SAD window
+  min_disparity: 1.0
+  max_disparity: 96         # ~4.0 m minimum depth at fx 707, b 0.537
+  lr_max_diff: 1.0          # left-right consistency tolerance, pixels
+  disparity_sigma: 0.25     # assumed disparity measurement noise, pixels
+  max_relative_depth_sigma: 0.05   # 0.25/0.05 = 5 px; max_depth tightens it to 6.33 px
+  max_depth: 60.0
+  max_mean_abs_diff: 30.0
+  uniqueness_ratio: 0.85
+
+odometry:
+  ransac_reprojection_error: 2.0
+  ransac_iterations: 200
+  ransac_confidence: 0.999
+  min_inliers: 20
+  gn_iterations: 10
+  gn_huber_delta: 2.0
+  final_inlier_threshold: 3.0
+  max_translation_per_frame: 4.0   # plausibility gate, metres (144 km/h at 10 Hz)
+  max_rotation_per_frame: 0.35     # plausibility gate, radians
+
+keyframes:
+  min_tracked: 60
+  max_tracked_ratio: 0.5
+  translation_threshold: 3.0
+  rotation_threshold: 0.12
+  max_frames: 8
+  min_frames: 2
+
+bundle_adjustment:
+  enabled: true
+  window: 7                 # keyframes per local window
+  covisibility_threshold: 15
+  max_iterations: 10
+  initial_lambda: 1.0e-4
+  huber_delta: 2.0
+  cost_tolerance: 1.0e-4
+
+loop_closure:
+  enabled: true
+  vocabulary_size: 1000
+  temporal_exclusion: 30    # keyframes
+  relative_score: 0.5
+  min_score: 0.02
+  consistency_required: 2
+  min_matches: 25
+  min_inliers: 30
+  min_inlier_ratio: 0.35
+  max_candidates: 5
+
+pose_graph:
+  kernel: dcs               # "huber", "dcs" or "none"
+  dcs_phi: 1.0
+  huber_delta: 1.0
+  kernel_on_loops_only: true
+  warmup_iterations: 3
+  anneal_stages: 6
+  max_iterations: 60
+  odometry_information: 100.0
+  loop_information: 100.0

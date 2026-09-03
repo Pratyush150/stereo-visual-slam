@@ -1,0 +1,14 @@
+# Core. The SLAM logic is implemented here; OpenCV supplies feature detection,
+# descriptor matching and the standard geometric solvers only.
+numpy>=1.24
+opencv-python>=4.8
+
+# Optional. SciPy accelerates the pose-graph solve with a sparse Cholesky;
+# without it the solver falls back to a dense factorisation (see
+# svslam.backend.posegraph.have_scipy). Matplotlib is only needed to render the
+# benchmark figures.
+scipy>=1.10
+matplotlib>=3.7
+
+# Testing.
+pytest>=7.0

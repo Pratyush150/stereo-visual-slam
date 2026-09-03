@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "svslam"
+version = "0.1.0"
+description = "Stereo visual SLAM evaluated against KITTI ground truth"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Pratyush Vatsa" }]
+keywords = ["slam", "visual-odometry", "stereo", "kitti", "bundle-adjustment"]
+dependencies = ["numpy>=1.24", "opencv-python>=4.8"]
+
+[project.optional-dependencies]
+full = ["scipy>=1.10", "matplotlib>=3.7"]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+filterwarnings = ["error::DeprecationWarning"]

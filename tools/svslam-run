@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Run the stereo SLAM pipeline over a KITTI sequence and save the trajectory.
+
+The trajectory is written in the KITTI odometry pose format: one line per frame,
+twelve numbers, the first three rows of the 4x4 camera-to-world matrix in
+row-major order.  That is the format ``svslam-eval`` and the official KITTI tools
+both read.
+
+Examples::
+
+    tools/svslam-run --sequence /data/kitti/2011_09_30/2011_09_30_drive_0027_sync \
+        --output trajectory.txt
+    tools/svslam-run --sequence /data/kitti/sequences/07 --frames 300 --no-loop
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from svslam.dataset.kitti import open_sequence  # noqa: E402
+from svslam.config import load_config  # noqa: E402
+from svslam.pipeline import PipelineConfig, StereoSlam  # noqa: E402
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--sequence", required=True,
+                        help="raw drive directory or odometry sequence directory")
+    parser.add_argument("--calib", default=None, help="calibration directory (raw layout only)")
+    parser.add_argument("--config", default=None,
+                        help="YAML configuration file, e.g. config/kitti_raw.yaml")
+    parser.add_argument("--output", default="trajectory.txt", help="where to write the poses")
+    parser.add_argument("--stats", default=None, help="optional JSON file for run statistics")
+    parser.add_argument("--start", type=int, default=0)
+    parser.add_argument("--frames", type=int, default=0, help="0 means the whole sequence")
+    parser.add_argument("--step", type=int, default=1)
+    parser.add_argument("--no-loop", action="store_true", help="disable loop closure")
+    parser.add_argument("--no-ba", action="store_true", help="disable local bundle adjustment")
+    parser.add_argument("--window", type=int, default=None, help="local BA window in keyframes")
+    parser.add_argument("--max-features", type=int, default=None)
+    parser.add_argument("--no-bucketing", action="store_true",
+                        help="disable feature bucketing (worse, but shows the effect)")
+    parser.add_argument("--progress", type=int, default=100,
+                        help="print progress every N frames; 0 to silence")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    kwargs = {"calib_dir": args.calib} if args.calib else {}
+    dataset = open_sequence(args.sequence, **kwargs)
+    stop = len(dataset) if args.frames <= 0 else min(args.start + args.frames, len(dataset))
+
+    config = load_config(args.config) if args.config else PipelineConfig()
+    if args.no_loop:
+        config.enable_loop = False
+    if args.no_ba:
+        config.enable_ba = False
+    if args.window:
+        config.local_ba_window = args.window
+    if args.max_features or args.no_bucketing:
+        from dataclasses import replace
+
+        config.feature = replace(
+            config.feature,
+            max_features=args.max_features or config.feature.max_features,
+            # Only the flag turns bucketing off; passing --max-features alone
+            # must not silently turn it back on for a config that disabled it.
+            use_bucketing=config.feature.use_bucketing and not args.no_bucketing,
+        )
+
+    print(f"sequence : {args.sequence}  ({stop - args.start} frames)")
+    print(f"baseline : {dataset.calibration.baseline:.4f} m,  fx {dataset.calibration.fx:.2f} px")
+
+    slam = StereoSlam(dataset.calibration, config)
+    if config.enable_loop:
+        vocab_frames = list(range(200, min(800, len(dataset)), 10))
+        if len(vocab_frames) >= 10:
+            slam.train_vocabulary(dataset, vocab_frames)
+        else:
+            print("sequence too short to train a vocabulary; loop closure disabled")
+            config.enable_loop = False
+
+    started = time.perf_counter()
+    result = slam.run(dataset, args.start, stop, args.step, progress=args.progress)
+    runtime = time.perf_counter() - started
+
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(output, result.poses[:, :3, :4].reshape(-1, 12), fmt="%.9e")
+
+    stats = dict(result.stats)
+    stats["runtime_s"] = round(runtime, 2)
+    stats["seconds_per_frame"] = round(runtime / max(len(result.frame_indices), 1), 4)
+    stats["stage_seconds"] = {k: round(v, 2) for k, v in result.timings.items()}
+    stats["loop_gate_counters"] = result.rejected_loops
+    if args.stats:
+        Path(args.stats).write_text(json.dumps(stats, indent=2), encoding="utf-8")
+
+    print(f"\nwrote {len(result.frame_indices)} poses to {output}")
+    for key, value in stats.items():
+        print(f"  {key}: {value}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

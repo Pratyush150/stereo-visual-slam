@@ -1,0 +1,38 @@
+# Datasets are never committed. Use tools/fetch_kitti.py instead.
+data/
+datasets/
+*.zip
+*.bin
+*.pcd
+
+# Benchmark artefacts that are regenerated on every run. The PNGs in
+# benchmarks/output/ are committed on purpose -- they are the figures in the
+# README, and they are produced by benchmarks/run.py from a real sequence.
+benchmarks/output/*.txt
+benchmarks/output/*.json
+benchmarks/output/*.npz
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.venv/
+venv/
+env/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
