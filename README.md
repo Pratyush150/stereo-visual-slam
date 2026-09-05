@@ -4,13 +4,22 @@ A stereo camera moving through a city, no GPS, and the question: **where am I,
 and what does the world around me look like?** This is a from-scratch answer to
 that question, measured against real KITTI ground truth.
 
-![Estimated trajectory against KITTI ground truth](benchmarks/output/trajectory.png)
-
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![NumPy](https://img.shields.io/badge/numpy-1.24%2B-013243)
 ![OpenCV](https://img.shields.io/badge/opencv-4.8%2B-5C3EE8)
 ![Dataset](https://img.shields.io/badge/evaluated%20on-KITTI-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-black)
+
+## Screenshots
+
+![Estimated trajectory plotted against KITTI OXTS ground truth](docs/screenshots/kitti-trajectory-vs-groundtruth.png)
+Estimated trajectory against OXTS ground truth over 1106 frames and 695 m of KITTI raw drive 2011_09_30_0027.
+
+![Tracked stereo features on a KITTI street frame, RANSAC inliers in green and rejections in red](docs/screenshots/kitti-tracked-features.jpg)
+Feature tracks between two real KITTI frames, showing which correspondences RANSAC PnP kept and which it threw away.
+
+![Translation and rotation error against sub-sequence length](docs/screenshots/kitti-error-vs-length.png)
+The official KITTI error metrics computed by `benchmarks/run.py` on the same sequence, over 100-600 m sub-sequences.
 
 ---
 
